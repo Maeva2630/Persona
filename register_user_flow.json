@@ -1,0 +1,135 @@
+{
+  "name": "register_user_flow",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "username"
+            },
+            {
+              "name": "password"
+            },
+            {
+              "name": "email"
+            },
+            {
+              "name": "send_time"
+            },
+            {
+              "name": "topics"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "9be27149-972e-45ea-94bf-0f7bdb472992",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "tableId": "users",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "username",
+              "fieldValue": "={{ $json.username }}"
+            },
+            {
+              "fieldId": "password_hash",
+              "fieldValue": "={{ $json.password_hash }}"
+            },
+            {
+              "fieldId": "email",
+              "fieldValue": "={{ $json.email }}"
+            },
+            {
+              "fieldId": "send_time",
+              "fieldValue": "={{ $json.send_time }}"
+            },
+            {
+              "fieldId": "topics",
+              "fieldValue": "={{ $json.topics }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "d03c6ec0-9e09-45d7-9ad6-ee192ff44bec",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "pyDddd8hr2uQrZQj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "value": "={{ $json.password }}",
+        "dataPropertyName": "password_hash"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "bf5916cf-49c2-4843-b750-415a4a933494",
+      "name": "Crypto"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Crypto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        []
+      ]
+    },
+    "Crypto": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "97726cb1-d7ab-478f-8fcd-e2eda59a9fcc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a8b75a15bd06c7029e657a35cafd8557378984c05bb9e55ec9c5ea6ca138f689"
+  },
+  "id": "282xaAL8T4MhnCjl",
+  "tags": []
+}

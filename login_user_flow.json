@@ -1,0 +1,131 @@
+{
+  "name": "login_user_flow",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "username"
+            },
+            {
+              "name": "password"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6627d2c2-526d-4069-9bec-1ee9e5fbb3be",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "users",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "username",
+              "condition": "eq",
+              "keyValue": "={{ $json.username }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "35889a67-4eba-4606-8c12-d0dc9ab4db33",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "pyDddd8hr2uQrZQj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "value": "={{ $('When Executed by Another Workflow').first().json.password }}",
+        "dataPropertyName": "input_hash"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "10bd97ac-78c5-44ba-a3c9-9fa0464b99ef",
+      "name": "Crypto"
+    },
+    {
+      "parameters": {
+        "jsCode": "const db_hash = $input.first().json.password_hash;\nconst input_hash = $input.first().json.input_hash;\nconst match = db_hash === input_hash;\n\nreturn [{ json: { success: match, username: $input.first().json.username } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "698143bb-4cc8-4d0e-af24-89c185eddfb4",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Crypto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d0b9d2b9-11f3-4962-91df-afb4b86cc4ab",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a8b75a15bd06c7029e657a35cafd8557378984c05bb9e55ec9c5ea6ca138f689"
+  },
+  "id": "LVCjUwjxMLjyj4Fj",
+  "tags": []
+}
