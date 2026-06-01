@@ -1,5 +1,5 @@
 {
-  "name": "login_user_flow",
+  "name": "check_availibility",
   "nodes": [
     {
       "parameters": {
@@ -9,7 +9,7 @@
               "name": "username"
             },
             {
-              "name": "password"
+              "name": "email"
             }
           ]
         }
@@ -20,7 +20,7 @@
         0,
         0
       ],
-      "id": "6627d2c2-526d-4069-9bec-1ee9e5fbb3be",
+      "id": "05c79d47-11c1-4928-b211-3a84e33c4be5",
       "name": "When Executed by Another Workflow"
     },
     {
@@ -43,8 +43,9 @@
         208,
         0
       ],
-      "id": "35889a67-4eba-4606-8c12-d0dc9ab4db33",
-      "name": "Get many rows",
+      "id": "713bd9b5-f42d-46cb-a772-1a5d16889455",
+      "name": "Get Usernames",
+      "alwaysOutputData": true,
       "credentials": {
         "supabaseApi": {
           "id": "pyDddd8hr2uQrZQj",
@@ -54,21 +55,37 @@
     },
     {
       "parameters": {
-        "value": "={{ $('When Executed by Another Workflow').first().json.password }}",
-        "dataPropertyName": "input_hash"
+        "operation": "getAll",
+        "tableId": "users",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "condition": "eq",
+              "keyValue": "={{ $('When Executed by Another Workflow').first().json.email }}"
+            }
+          ]
+        }
       },
-      "type": "n8n-nodes-base.crypto",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
       "position": [
         416,
         0
       ],
-      "id": "10bd97ac-78c5-44ba-a3c9-9fa0464b99ef",
-      "name": "Crypto"
+      "id": "9bcd9008-e667-44ad-8e0c-6684d763af4d",
+      "name": "Get Emails",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "pyDddd8hr2uQrZQj",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const db_hash = $input.first().json.password_hash;\nconst input_hash = $input.first().json.input_hash;\nconst match = db_hash === input_hash;\n\nreturn [{ json: { success: match, username: $input.first().json.username } }];"
+        "jsCode": "const usernameCheck = $('Get Usernames').all();\nconst emailCheck = $('Get Emails').all();\n\nconst usernameExists = usernameCheck.some(item => item.json && item.json.id);\nconst emailExists = emailCheck.some(item => item.json && item.json.id);\n\nif (usernameExists) {\n  return [{ json: { available: false, reason: \"Username already exists\" }}];\n}\nif (emailExists) {\n  return [{ json: { available: false, reason: \"Email already in use\" }}];\n}\nreturn [{ json: { available: true }}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -76,8 +93,8 @@
         624,
         0
       ],
-      "id": "698143bb-4cc8-4d0e-af24-89c185eddfb4",
-      "name": "Code in JavaScript"
+      "id": "d153ef98-2c7e-4208-b388-c2f96c0b027e",
+      "name": "Check Availability"
     }
   ],
   "pinData": {},
@@ -86,29 +103,29 @@
       "main": [
         [
           {
-            "node": "Get many rows",
+            "node": "Get Usernames",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get many rows": {
+    "Get Usernames": {
       "main": [
         [
           {
-            "node": "Crypto",
+            "node": "Get Emails",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Crypto": {
+    "Get Emails": {
       "main": [
         [
           {
-            "node": "Code in JavaScript",
+            "node": "Check Availability",
             "type": "main",
             "index": 0
           }
@@ -121,11 +138,11 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "d0b9d2b9-11f3-4962-91df-afb4b86cc4ab",
+  "versionId": "2d6ded31-9c99-4100-94a2-9296d850aee8",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "a8b75a15bd06c7029e657a35cafd8557378984c05bb9e55ec9c5ea6ca138f689"
   },
-  "id": "LVCjUwjxMLjyj4Fj",
+  "id": "tm1Bihy0HsGm7CIt",
   "tags": []
 }

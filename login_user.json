@@ -1,0 +1,131 @@
+{
+  "name": "login_user",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "username"
+            },
+            {
+              "name": "password"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6627d2c2-526d-4069-9bec-1ee9e5fbb3be",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "users",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "username",
+              "condition": "eq",
+              "keyValue": "={{ $json.username }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "35889a67-4eba-4606-8c12-d0dc9ab4db33",
+      "name": "Get User Data",
+      "credentials": {
+        "supabaseApi": {
+          "id": "pyDddd8hr2uQrZQj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "value": "={{ $('When Executed by Another Workflow').first().json.password }}",
+        "dataPropertyName": "input_hash"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "10bd97ac-78c5-44ba-a3c9-9fa0464b99ef",
+      "name": "Password Crypto"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst match = item.password_hash === item.input_hash;\n\nreturn [{ json: { \n  success: match,\n  username: item.username,\n  email: item.email,\n  topics: item.topics,\n  send_time: item.send_time,\n  subscribed: item.subscribed,\n  role: item.role,\n  newsletter_style: item.newsletter_style\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "698143bb-4cc8-4d0e-af24-89c185eddfb4",
+      "name": "Check Password"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get User Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Data": {
+      "main": [
+        [
+          {
+            "node": "Password Crypto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Password Crypto": {
+      "main": [
+        [
+          {
+            "node": "Check Password",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c79ff9b7-b1fa-4ffe-91a2-a1e11c526c5c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a8b75a15bd06c7029e657a35cafd8557378984c05bb9e55ec9c5ea6ca138f689"
+  },
+  "id": "LVCjUwjxMLjyj4Fj",
+  "tags": []
+}
