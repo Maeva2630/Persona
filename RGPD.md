@@ -41,11 +41,10 @@ Consentement explicite de l'utilisateur (Art. 6.1.a RGPD)
 - L'utilisateur est informé à l'inscription que des publicités peuvent apparaître
 - L'utilisateur peut refuser les publicités à tout moment
 
-## Publicités (RGPD)
-- Les annonceurs ne voient jamais les emails ou données personnelles des utilisateurs
-- Les publicités sont clairement étiquetées comme "Sponsorisé" dans la newsletter
-- L'utilisateur peut refuser les publicités à tout moment via le chatbot
-- Le consentement aux publicités est révocable à tout moment
+## Publicités
+- L'utilisateur consent explicitement à recevoir des publicités à l'inscription
+- Sans consentement → pas de compte créé
+- Les annonceurs ne voient jamais les données personnelles des utilisateurs
 
 ## Visibilité du profil
 - Par défaut le profil est privé (is_public = false)
