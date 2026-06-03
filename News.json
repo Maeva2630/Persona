@@ -1,0 +1,273 @@
+{
+  "name": "News",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c8f89e98-e89d-4c49-9cf5-9e3c06608bd2",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "=https://news.google.com/rss/search?q={{ $json.topic }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        64
+      ],
+      "id": "ec116fb8-d93a-4091-811e-506c2057be4e",
+      "name": "RSS Read",
+      "executeOnce": false,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "maxItems": 5
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        64
+      ],
+      "id": "9dd67a56-de89-4065-bb92-d23f9a1f1689",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "30191e21-8e14-4942-9836-186fd56dcaad",
+      "name": "Loop Over Topics"
+    },
+    {
+      "parameters": {
+        "jsCode": "const uniqueTopics = new Set();\n\nfor (const item of $input.all()) {\n  const topicsString = item.json.topics;\n  \n  if (topicsString) {\n    const splitTopics = topicsString.toLowerCase().split(/,|\\sand\\s|\\set\\s/);\n    \n    for (const topic of splitTopics) {\n      let cleanedTopic = topic.trim();\n      cleanedTopic = cleanedTopic.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\");\n      if (cleanedTopic.endsWith('s') && cleanedTopic.length > 3) {\n        cleanedTopic = cleanedTopic.slice(0, -1);\n      }\n      if (cleanedTopic !== \"\") {\n        uniqueTopics.add(cleanedTopic);\n      }\n    }\n  }\n}\n\nreturn Array.from(uniqueTopics).map(topic => {\n  return { json: { topic: topic } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "740b96e2-33f3-49af-b6b4-b6828e957b54",
+      "name": "List Topics"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "users",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "8db85e0a-5585-42cb-8094-61cc66f59693",
+      "name": "Get Users",
+      "credentials": {
+        "supabaseApi": {
+          "id": "XpJfx6LvUck1ChRx",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "news",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "created_at",
+              "condition": "lte",
+              "keyValue": "={{ $now.minus({ days: 1 }) }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -144
+      ],
+      "id": "6b1ee9eb-d658-41ae-8ef8-2b171e8bb87d",
+      "name": "Clean Yesterday News",
+      "credentials": {
+        "supabaseApi": {
+          "id": "XpJfx6LvUck1ChRx",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "news",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.title }}"
+            },
+            {
+              "fieldId": "link",
+              "fieldValue": "={{ $json.link }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ $json.content }}"
+            },
+            {
+              "fieldId": "topic",
+              "fieldValue": "={{ $('Loop Over Topics').item.json.topic }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        64
+      ],
+      "id": "55299d86-b68a-4e1f-9bc3-f227eb799b7d",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "XpJfx6LvUck1ChRx",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Clean Yesterday News",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Topics": {
+      "main": [
+        [],
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Topics": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Users": {
+      "main": [
+        [
+          {
+            "node": "List Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Yesterday News": {
+      "main": [
+        []
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c8e9e2f7-2a82-4e13-a4cd-b24a76387f7b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d02b90a688db637111cdea1391801daf67915e89185e89308ce0812386599820"
+  },
+  "id": "rFhlWsLaDReiaUKt",
+  "tags": []
+}
