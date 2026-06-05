@@ -65,7 +65,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const uniqueTopics = new Set();\n\nfor (const item of $input.all()) {\n  const topicsString = item.json.topics;\n  \n  if (topicsString) {\n    const splitTopics = topicsString.toLowerCase().split(/,|\\sand\\s|\\set\\s/);\n    \n    for (const topic of splitTopics) {\n      let cleanedTopic = topic.trim();\n      cleanedTopic = cleanedTopic.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\");\n      if (cleanedTopic.endsWith('s') && cleanedTopic.length > 3) {\n        cleanedTopic = cleanedTopic.slice(0, -1);\n      }\n      if (cleanedTopic !== \"\") {\n        uniqueTopics.add(cleanedTopic);\n      }\n    }\n  }\n}\n\nreturn Array.from(uniqueTopics).map(topic => {\n  return { json: { topic: topic } };\n});"
+        "jsCode": "const uniqueTopics = new Set();\n\nfor (const item of $input.all()) {\n  const topicsString = item.json.topics;\n  \n  if (topicsString) {\n    const splitTopics = topicsString.toLowerCase().split(/,|\\sand\\s|\\set\\s/);\n    \n    for (const topic of splitTopics) {\n      let cleanedTopic = topic.trim();\n      cleanedTopic = cleanedTopic.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\");\n      if (cleanedTopic !== \"\") {\n        uniqueTopics.add(cleanedTopic);\n      }\n    }\n  }\n}\n\nreturn Array.from(uniqueTopics).map(topic => {\n  return { json: { topic: topic } };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -263,7 +263,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "c8e9e2f7-2a82-4e13-a4cd-b24a76387f7b",
+  "versionId": "5369583e-0415-47cb-adc7-d9b5b4dc396e",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "d02b90a688db637111cdea1391801daf67915e89185e89308ce0812386599820"
