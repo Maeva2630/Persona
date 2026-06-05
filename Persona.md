@@ -5,7 +5,7 @@ Persona is a personalized AI-powered newsletter assistant. You interact with it 
 
 ---
 
-## Getting Started
+## Getting Started - Workflow 1
 
 ### Register as a Regular User
 Talk to the chatbot and say **"I want to register"**.
