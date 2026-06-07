@@ -1,0 +1,370 @@
+{
+  "name": "send_email",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 45
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -96,
+        240
+      ],
+      "id": "89924b30-58f9-4ef6-8d02-bacda905b669",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1552,
+        336
+      ],
+      "id": "fed6094a-6800-4831-aaad-15cc0b58bad5",
+      "name": "Gemini 3.1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "zuQLAK1eZSXPAz43",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "users",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "subscribed",
+              "condition": "eq",
+              "keyValue": "true"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        128,
+        240
+      ],
+      "id": "2314e542-164d-45ff-8842-60cd304baf73",
+      "name": "Get all Users",
+      "credentials": {
+        "supabaseApi": {
+          "id": "pyDddd8hr2uQrZQj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9d254553-4011-4bd6-96ea-b7561d2aecc7",
+              "leftValue": "={{ $json.send_time }}",
+              "rightValue": "={{ $now.format('HH:mm') }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        352,
+        240
+      ],
+      "id": "6f8ebc7e-982a-4709-ae20-af5fed699498",
+      "name": "Filter by current time"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        576,
+        240
+      ],
+      "id": "9bcddbd3-c005-4373-ba2a-00e6e51fac49",
+      "name": "Loops over users"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "ads"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        112
+      ],
+      "id": "0964cabd-6c11-4626-9043-9ea0a22aa8a2",
+      "name": "fetch related ads",
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "pyDddd8hr2uQrZQj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const user = $('Loops over users').first().json;\nconst newsItems = $('fetch news').all().map(item => item.json);\nconst allAds = $('fetch related ads').all().map(item => item.json);\n\n// Split user topics\nconst userTopics = user.topics.toLowerCase().split(',').map(t => t.trim());\n\n// Filter news by user topics\nconst filteredNews = newsItems.filter(item => \n  userTopics.includes(item.topic.toLowerCase().trim())\n);\n\nconst isPremium = user.is_premium === true || user.is_premium === 'true';\n\n// Clean all filtered news — let LLM decide which to pick\nconst cleanNews = filteredNews.map(item => ({\n  title: item.title,\n  link: item.link,\n  summary: item.title,\n  topic: item.topic\n}));\n\n// No ads for premium users\nconst defaultAd = {\n  content: \"Want to reach our readers? Contact us at persona@newsletter.com to advertise in our newsletter!\"\n};\n\nconst matchingAd = isPremium ? null : (allAds.find(ad => {\n  const adTopics = ad.target_topics.toLowerCase().split(',').map(t => t.trim());\n  return adTopics.some(topic => userTopics.includes(topic));\n}) || defaultAd);\n\nreturn [{\n  json: {\n    username: user.username,\n    email: user.email,\n    newsletter_style: user.newsletter_style,\n    is_premium: isPremium,\n    topics: user.topics,\n    news: JSON.stringify(cleanNews),\n    ad: matchingAd ? JSON.stringify(matchingAd) : null\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        112
+      ],
+      "id": "4d9f8451-d195-46d6-9f92-e7da13526ab0",
+      "name": "Preprocessing"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst previousData = $('Preprocessing').first().json;\n\n// Get LLM output\nconst rawText = data.text || data.output || data.response || '';\nconst cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();\nconst jsonMatch = cleanText.match(/\\[[\\s\\S]*\\]/);\nif (!jsonMatch) {\n  throw new Error('No JSON array found: ' + cleanText.substring(0, 200));\n}\nconst articles = JSON.parse(jsonMatch[0]);\n\n// Get other data from preprocess node\nconst ad = previousData.ad ? (typeof previousData.ad === 'string' ? JSON.parse(previousData.ad) : previousData.ad) : null;\nconst username = previousData.username;\nconst email = previousData.email;\nconst isPremium = previousData.is_premium === 'true';\nconst date = new Date().toLocaleDateString('en-GB');\n\n// Build articles HTML\nconst articlesHTML = articles.map((article) => `\n  <div style=\"margin-bottom: 24px; padding: 16px; background: #f9f9f9; border-left: 4px solid #0047FF; border-radius: 4px;\">\n    <h2 style=\"margin: 0 0 8px 0; font-size: 16px; color: #1a1a1a;\">\n      <a href=\"${article.link}\" style=\"color: #0047FF; text-decoration: none;\">${article.title}</a>\n    </h2>\n    <p style=\"margin: 0; font-size: 14px; color: #444; line-height: 1.5;\">${article.summary}</p>\n  </div>\n`).join('');\n\n// Build ad HTML\nconst adHTML = ad ? `\n  <div style=\"margin: 24px 0; padding: 16px; background: #fff8e1; border: 1px solid #ffd54f; border-radius: 4px;\">\n    <p style=\"margin: 0 0 4px 0; font-size: 11px; color: #888; text-transform: uppercase;\">Sponsored</p>\n    <p style=\"margin: 0; font-size: 14px; color: #444;\">${ad.content}</p>\n  </div>\n` : '';\n\n// Build full HTML\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"margin: 0; padding: 0; background: #f0f0f0; font-family: Arial, sans-serif;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background: white;\">\n\n    <!-- HEADER -->\n    <div style=\"background: #0047FF; padding: 32px; text-align: center;\">\n      <h1 style=\"margin: 0; color: white; font-size: 28px; letter-spacing: 2px;\">PERSONA</h1>\n      <p style=\"margin: 8px 0 0 0; color: rgba(255,255,255,0.8); font-size: 14px;\">Your personalized newsletter</p>\n    </div>\n\n    <!-- DATE + GREETING -->\n    <div style=\"padding: 24px 32px 0 32px;\">\n      <p style=\"color: #888; font-size: 13px; margin: 0;\">${date}</p>\n      <h2 style=\"margin: 8px 0 24px 0; font-size: 20px; color: #1a1a1a;\">Hello ${username} 👋</h2>\n      <p style=\"margin: 0 0 24px 0; color: #444; font-size: 14px;\">Here are your top ${articles.length} stories for today.\n      </p>\n    </div>\n\n    <!-- ARTICLES -->\n    <div style=\"padding: 0 32px;\">\n      ${articlesHTML}\n    </div>\n\n    <!-- AD -->\n    <div style=\"padding: 0 32px;\">\n      ${adHTML}\n    </div>\n\n    <!-- FOOTER -->\n    <div style=\"background: #1a1a1a; padding: 24px 32px; margin-top: 32px; text-align: center;\">\n      <p style=\"margin: 0 0 8px 0; color: #888; font-size: 12px;\">You are receiving this because you subscribed to Persona.</p>\n      <p style=\"margin: 0; color: #888; font-size: 12px;\">© Persona 2026</p>\n    </div>\n\n  </div>\n</body>\n</html>\n`;\n\nreturn [{ json: { html, to: email, username } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        112
+      ],
+      "id": "a1e7fd6e-5fc0-478c-8348-f87948b9e511",
+      "name": "HTML formating"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a newsletter curator and formatter.\n\nYou will receive a list of news articles. Your job is to:\n1. SELECT the best articles for the user\n2. FORMAT them according to the user's style\n\nSELECTION RULES:\n- Regular user: select exactly {{ $json.is_premium ? 5 : 4 }} articles\n- Premium user: select exactly {{ $json.is_premium ? 5 : 4 }} articles\n- If multiple topics are present, balance the selection evenly across topics\n- For 4 articles with 2 topics: pick 2 articles per topic\n- For 5 articles with 2 topics: pick 2-3 articles per topic\n- Prioritize the most interesting, relevant and recent articles\n- Never pick duplicate or very similar articles\n\nFORMATTING RULES:\nStyle: {{ $json.newsletter_style }}\n- concise and neutral: one factual sentence per article\n- detailed and formal: full paragraph, professional tone\n- casual and fun: conversational, energetic tone\n- bullet points only: bullet list format\n- short summaries: 2-3 sentences max\n\nUser topics: {{ $json.newsletter_style }}\n\nHere are ALL available articles:\n{{ $json.news }}\n\nReturn ONLY a valid JSON array, no markdown, no backticks, no extra text:\n[{\"title\": \"exact title\", \"summary\": \"formatted summary\", \"link\": \"exact link\"}]",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1472,
+        112
+      ],
+      "id": "d33cd319-5a9f-4930-9042-1bffd36e1b8b",
+      "name": "Resuming news"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "=📰 Your Persona Newsletter — {{ $now.format('dd LLLL yy') }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2048,
+        240
+      ],
+      "id": "b211aa2d-59e0-4d18-b315-3d3e709eef1c",
+      "name": "Send Email",
+      "webhookId": "0231a27b-b8cf-4542-b3bf-7c4b15dc0362",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "e4KNM0cTIeX4d9GT",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "news",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        800,
+        112
+      ],
+      "id": "174494df-b2f9-400d-ab57-1facc3946157",
+      "name": "fetch news",
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "pyDddd8hr2uQrZQj",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get all Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini 3.1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Resuming news",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get all Users": {
+      "main": [
+        [
+          {
+            "node": "Filter by current time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter by current time": {
+      "main": [
+        [
+          {
+            "node": "Loops over users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loops over users": {
+      "main": [
+        [],
+        [
+          {
+            "node": "fetch news",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch related ads": {
+      "main": [
+        [
+          {
+            "node": "Preprocessing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preprocessing": {
+      "main": [
+        [
+          {
+            "node": "Resuming news",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML formating": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resuming news": {
+      "main": [
+        [
+          {
+            "node": "HTML formating",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Loops over users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch news": {
+      "main": [
+        [
+          {
+            "node": "fetch related ads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Paris",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "8bab9ff9-21f9-4d64-863f-ba5021dc1519",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a8b75a15bd06c7029e657a35cafd8557378984c05bb9e55ec9c5ea6ca138f689"
+  },
+  "id": "b6ei6fqq9DY7KD0D",
+  "tags": []
+}
