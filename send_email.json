@@ -6,8 +6,8 @@
         "rule": {
           "interval": [
             {
-              "field": "seconds",
-              "secondsInterval": 45
+              "field": "minutes",
+              "minutesInterval": 1
             }
           ]
         }
@@ -360,7 +360,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "8bab9ff9-21f9-4d64-863f-ba5021dc1519",
+  "versionId": "9f81a0bc-7e4b-4ef8-ae31-f08c87fddd0f",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "a8b75a15bd06c7029e657a35cafd8557378984c05bb9e55ec9c5ea6ca138f689"
